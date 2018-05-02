@@ -1,0 +1,5 @@
+#list containers
+sudo docker ps
+
+#copy file from local to docker
+sudo docker cp /home/amh/Downloads/lastfm-dataset-1K/userid-timestamp-artid-artname-traid-traname.tsv  e012774cbe46:/

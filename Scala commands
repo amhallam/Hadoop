@@ -1,0 +1,138 @@
+#check the data in the files after loading it from local linux to docker image :
+
+cd ~/Downloads/lastfm-dataset-1K
+tail -10 userid-profile.tsv
+tail -10 userid-timestamp-artid-artname-traid-traname.tsv
+
+#test it
+df.collect()
+
+#Part A
+#The alternative could be to load the file into hdfs, then create an external table in Hive on top of it
+#and simply run the query select user , max(distinct song) from the file2 - third alternative is to load it using an ETL ( Talend into Hive )
+#solution with Spark
+
+#load the file
+val file = sc.textFile("file:///userid-profile.tsv")
+val file2 = sc.textFile("file:///userid-timestamp-artid-artname-traid-traname.tsv")
+
+import org.apache.spark.sql.types._
+case class schema(userid: String, timestamp: String, artistid: String, artistname: String, trackname: String)
+
+
+#Convert records of the RDD & Apply the schema to the RDD & create DF
+val DF = file2.map(_.split("\t")).map(line => schema(line(0), line(1), line(2), line(3), line(4))).toDF()
+
+#test DF
+DF.first
+>org.apache.spark.sql.Row = [user_000001,2009-05-04T23:08:57Z,f1b1cf71-bd35-4e99-8624-24a6e15f133a,Deep Dish,]
+
+#SQL can be run over a temporary view created using DataFrames
+DF.registerTempTable("DF")
+
+#SQL statements can be run by using the sql methods provided by sqlContext.
+#Create a list of user IDs, along with the number of distinct songs each user has played.
+val result = sqlContext.sql("SELECT userid, count(distinct trackname) FROM DF group by userid ")
+
+>result.show
+
++-----------+-----+
+|     userid|  _c1|
++-----------+-----+
+|user_000037| 2339|
+|user_000370|11224|
+|user_000488|  907|
+|user_000532| 3755|
+|user_000983| 5038|
+|user_000038| 3252|
+|user_000371| 7392|
+|user_000489| 1480|
+|user_000984| 1278|
+|user_000533|   25|
+|user_000039| 1554|
+|user_000372| 4271|
+|user_000534| 3514|
+|user_000985|  142|
+|user_000373| 2908|
+|user_000535| 5374|
+|user_000986| 8744|
+|user_000374| 2908|
+|user_000536| 9994|
+|user_000987|  784|
++-----------+-----+
+only showing top 20 rows
+
+
+
+#Part B
+#Create a list of the 100 most popular songs (artist and title) in the dataset, with the number of times each was played.
+#alternative would be same as above, external hive table - third alternative is to load it using an ETL ( Talend into Hive )
+
+#select popular songs
+val result1 = sqlContext.sql("SELECT trackname , count(*) FROM DF where trackname !='' group by  trackname order by count(*) desc limit 100 ").toDF()
+
+>result1.show
++--------------------+-------+
+|           trackname|    _c1|
++--------------------+-------+
+|db16d0b3-b8ce-4aa...|   3992|
+|7f1f45c0-0101-49e...|   3663|
+|9e2ad5bc-c6f9-40d...|   3534|
+|ff1e3e1a-f6e8-469...|   3483|
+|4e17b118-70a6-4c1...|   3479|
+|db4c9220-df76-4b4...|   3156|
+|60e94685-0481-4d3...|   3060|
+|f874c752-65bc-4d5...|   3048|
+|bd782340-6fa5-4b5...|   3004|
+|4ad08552-6c35-49e...|   2998|
+|6c450822-41ca-444...|   2989|
+|153d8ca0-dc23-454...|   2950|
+|f3bba4cd-8018-468...|   2948|
+|a5741d3d-c925-407...|   2947|
+|40f04250-6d23-4f8...|   2945|
+|1001f481-e93e-410...|   2906|
+|e6d80ec5-85b3-490...|   2826|
+|72c6b4d3-71a8-4c7...|   2696|
+|a73e9515-0d9b-480...|   2670|
++--------------------+-------+
+
+#SQL can be run over a temporary view created using DataFrames
+result1.registerTempTable("result1")
+
+
+#select the artist fot the songs
+val result2 = sqlContext.sql("SELECT result1.trackname , DF.artistname FROM DF join result1 on result1.trackname = DF.trackname").toDF()
+
+>
++--------------------+----------+
+|           trackname|artistname|
++--------------------+----------+
+|31600df4-e6dd-48c...| Radiohead|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|8fa2de7e-49e0-420...| Radiohead|
+|a345146f-41f8-484...| Radiohead|
+|e5be3063-0f68-4c2...| Radiohead|
+|f74b48a6-5a60-4b5...| Radiohead|
+|8fa2de7e-49e0-420...| Radiohead|
+|a345146f-41f8-484...| Radiohead|
+|76ccedbc-ce16-4c2...| Radiohead|
+|76ccedbc-ce16-4c2...| Radiohead|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|76ccedbc-ce16-4c2...| Radiohead|
+|e5be3063-0f68-4c2...| Radiohead|
+|6cbbb97d-2180-4ba...|  Coldplay|
+|6cbbb97d-2180-4ba...|  Coldplay|
++--------------------+----------+
+only showing top 20 rows
+
+
+
+#Part C
+#Say we define a user’s “session” of Last.fm usage to be comprised of one or more songs played by that  user, where each song is started within 20 minutes of the previous song’s start time.
+#Create a list of the top 10 longest sessions, with the following information about each session: userid, timestamp of first and last songs in the session, and the list of songs played in the session (in order of play).
+#Please provide the solution to this exercise using both the any of DataFrame or DataSet API (your choice) and the RDD API (mandatory)

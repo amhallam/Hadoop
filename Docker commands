@@ -6,3 +6,11 @@ sudo docker run -it -p 8088:8088 -p 8042:8042 -p 4040:4040 -h sandbox sequenceiq
 
 #copy file from local to docker
 sudo docker cp /home/amh/Downloads/lastfm-dataset-1K/userid-timestamp-artid-artname-traid-traname.tsv  e012774cbe46:/
+
+#start / stop docker
+sudo docker stop /mariadb
+sudo docker start /mariadb
+
+
+#clean all images & containers
+docker system prune

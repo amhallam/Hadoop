@@ -14,3 +14,8 @@ sudo docker start /mariadb
 
 #clean all images & containers
 docker system prune
+
+
+#compose mariadb
+sudo docker run --name mariadb -e MYSQL_ROOT_PASSWORD=wordpress -p 8081:3306 -d mariadb:10.1.17
+root/wordpress

@@ -1,0 +1,5 @@
+# pull version 1.3.0 of Nifi
+sudo docker pull apache/nifi:1.3.0
+
+#Next, start the image as is to see it run. The -p 8080:8080 exposes the remote nifi port locally.
+docker run -p 8080:8080 apache/nifi:1.2.0

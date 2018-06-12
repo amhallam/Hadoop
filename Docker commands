@@ -1,21 +1,19 @@
 #list containers
 sudo docker ps
 
-#start docker containers
+#start docker containers - Spark container
 sudo docker run -it -p 8088:8088 -p 8042:8042 -p 4040:4040 -h sandbox sequenceiq/spark:1.6.0 bash
 
 #copy file from local to docker
 sudo docker cp /home/amh/Downloads/lastfm-dataset-1K/userid-timestamp-artid-artname-traid-traname.tsv  e012774cbe46:/
 
-#start / stop docker
+#clean all images & containers - this will clean all containers
+docker system prune
+
+#start / stop docker mariadb
 sudo docker stop /mariadb
 sudo docker start /mariadb
 
-
-#clean all images & containers
-docker system prune
-
-
-#compose mariadb
+#compose mariadb container
 sudo docker run --name mariadb -e MYSQL_ROOT_PASSWORD=wordpress -p 8081:3306 -d mariadb:10.1.17
 root/wordpress

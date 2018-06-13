@@ -3,3 +3,9 @@ sudo docker pull apache/nifi:1.3.0
 
 #Next, start the image as is to see it run. The -p 8080:8080 exposes the remote nifi port locally.
 docker run -p 8080:8080 apache/nifi:1.2.0
+
+#in case we need to add a custom nar
+docker create --name nifi \
+   -v /FULL_PATH/sample.nar:/opt/nifi/nifi-1.2.0/lib/sample.nar \
+   apache/nifi:1.2.0
+docker start nifi
